@@ -1,0 +1,835 @@
+[
+  {
+    "id": "TC001",
+    "title": "Student starts an exam after granting permissions",
+    "description": "A student can start an exam from the dashboard, grant camera and screen-share access, and enter the live exam interface.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Allow camera access"
+      },
+      {
+        "type": "action",
+        "description": "Allow screen-share access"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live exam interface is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the webcam proctoring view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Student signs in and reaches the student dashboard",
+    "description": "This verifies that a student can log in through the shared form and land on the student dashboard with their exam list visible.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify available exams are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Student logs in and reaches the exam dashboard",
+    "description": "A student can sign in from the login form and land on the student dashboard with the available exam list visible.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the student dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the available exam list is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Administrator signs in and reaches the admin dashboard",
+    "description": "This verifies that an administrator can log in through the shared form and land on the admin dashboard with summary information visible.",
+    "category": "Authentication",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for an administrator account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the admin dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify summary statistics are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Student answers questions and submits the exam",
+    "description": "A student can select answers in the live exam interface and submit the completed exam successfully.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Allow camera access"
+      },
+      {
+        "type": "action",
+        "description": "Allow screen-share access"
+      },
+      {
+        "type": "action",
+        "description": "Answer the current question"
+      },
+      {
+        "type": "action",
+        "description": "Submit the exam"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam submission confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam session is completed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Student submits a completed exam",
+    "description": "This verifies that a student can finish answering an exam and submit it from the live exam interface, resulting in a completion confirmation.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Answer the required questions"
+      },
+      {
+        "type": "action",
+        "description": "Submit the exam"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an exam submission confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam is no longer in the active live exam state"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Administrator logs in and reaches the admin dashboard",
+    "description": "An administrator can sign in from the login form and land on the admin dashboard with exam summary statistics visible.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the admin dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify exam summary statistics are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Student starts an exam from the dashboard",
+    "description": "This verifies that a student can begin an exam session from the dashboard and reach the live exam interface.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live exam interface is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify exam questions are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Student sees available exams after signing in",
+    "description": "This verifies that a signed-in student can review the exam list on the dashboard and the available exams are visible.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify available exams are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Student sees the exam question controls during a live exam",
+    "description": "This verifies that the live exam interface provides the controls needed to move through questions and manage review status.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify question navigation controls are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify review marking controls are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Student moves between questions and keeps answers selected",
+    "description": "A student can navigate to the next and previous questions while their selected answers remain visible for each question.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Allow camera access"
+      },
+      {
+        "type": "action",
+        "description": "Allow screen-share access"
+      },
+      {
+        "type": "action",
+        "description": "Answer the current question"
+      },
+      {
+        "type": "action",
+        "description": "Move to the next question"
+      },
+      {
+        "type": "action",
+        "description": "Move to the previous question"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the previously selected answer remains visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify question navigation controls are available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Student uses the question grid to jump to a question",
+    "description": "A student can open the question grid and jump directly to another question during the exam.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Allow camera access"
+      },
+      {
+        "type": "action",
+        "description": "Allow screen-share access"
+      },
+      {
+        "type": "action",
+        "description": "Open the question grid"
+      },
+      {
+        "type": "action",
+        "description": "Jump to a specific question"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected question is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the question grid can be reopened"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Administrator reviews exam summary statistics",
+    "description": "This verifies that an administrator can access the dashboard and review the available exam summary statistics.",
+    "category": "Admin Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for an administrator account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the admin dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify exam summary statistics are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Student uses the question grid to jump between questions",
+    "description": "This verifies that a student can open the question grid and jump directly to another question in the exam.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Open the question grid"
+      },
+      {
+        "type": "action",
+        "description": "Jump to a different question from the grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected question is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the question grid remains available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Student answers and changes responses while moving through the exam",
+    "description": "This verifies that a student can answer questions, navigate between them, and keep selected answers when returning to earlier questions.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Answer the first question"
+      },
+      {
+        "type": "action",
+        "description": "Move to the next question"
+      },
+      {
+        "type": "action",
+        "description": "Return to the previous question"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the previously selected answer is still shown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the current question is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Student marks questions for review and sees them in the review set",
+    "description": "This verifies that a student can mark questions for review during the exam and later identify those marked questions before submission.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Mark the current question for review"
+      },
+      {
+        "type": "action",
+        "description": "Open the review questions view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify marked questions are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the current question is shown as marked for review"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Student marks a question for review before submitting",
+    "description": "A student can mark a question for review and later see that marked question reflected in the exam flow before submission.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Allow camera access"
+      },
+      {
+        "type": "action",
+        "description": "Allow screen-share access"
+      },
+      {
+        "type": "action",
+        "description": "Mark the current question for review"
+      },
+      {
+        "type": "action",
+        "description": "Open the question grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the marked question is indicated in the question grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the review status remains visible on the question"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Student is blocked from starting an exam after denying proctoring permissions",
+    "description": "This verifies that the exam start flow handles denied camera or screen-sharing access by preventing the live exam from beginning and showing a blocked-state message.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Deny camera access when prompted"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a blocked proctoring state is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the live exam interface is not displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC019",
+    "title": "Student is blocked when camera or screen-share access is denied",
+    "description": "If a student denies required proctoring permissions, the exam does not enter the live session and a blocked proctoring state is shown.",
+    "category": "Exam Interface",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Deny camera access"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam does not start"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a blocked proctoring state is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC020",
+    "title": "Student sees an error when submitting without answering required questions",
+    "description": "This verifies that the exam interface prevents submission when required questions are unanswered and shows a validation error.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Submit the exam without answering all required questions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the exam remains open for completion"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC021",
+    "title": "Student cannot move before the first question or past the last question",
+    "description": "This verifies that the exam navigation controls prevent boundary navigation beyond the first and last questions and show the expected disabled or error state.",
+    "category": "Student Dashboard",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill in email and password for a student account"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Start an available exam"
+      },
+      {
+        "type": "action",
+        "description": "Try to move to the previous question from the first question"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the last question"
+      },
+      {
+        "type": "action",
+        "description": "Try to move to the next question from the last question"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify boundary navigation is prevented"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the current question remains visible"
+      }
+    ],
+    "priority": "Low"
+  }
+]

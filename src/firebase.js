@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
 import { getAI, GoogleAIBackend } from "firebase/ai";
 
 const firebaseConfig = {
@@ -23,8 +22,6 @@ export const db = getFirestore(app);
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
-// Initialize Cloud Storage
-export const storage = getStorage(app);
 
 // Initialize AI Logic (Gemini API)
 export const ai = getAI(app, { backend: new GoogleAIBackend() });

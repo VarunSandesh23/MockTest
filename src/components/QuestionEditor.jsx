@@ -1,7 +1,5 @@
 import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../firebase';
 
 const JEE_SYMBOLS = {
   Math: ['∫', '∑', '√', '±', 'π', '∞', '∈', '∉', '⊂', '∪', '∩', '∠', '∴', '∵', '≈', '≠', '≤', '≥', '½', '¼', 'x²', 'x³'],

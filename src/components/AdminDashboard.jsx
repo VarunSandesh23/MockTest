@@ -20,6 +20,7 @@ const AdminDashboard = ({ onBackToLogin }) => {
   // Question Bank states
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
+  const [questionSearch, setQuestionSearch] = useState('');
   
   const [uploadStatus, setUploadStatus] = useState({ loading: false, message: '', type: '' });
   const [newExamTitle, setNewExamTitle] = useState('');
@@ -225,6 +226,30 @@ const AdminDashboard = ({ onBackToLogin }) => {
     });
   };
   
+  const downloadLeaderboardCSV = (results, examTitle) => {
+    if (!results || results.length === 0) return;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Rank,Student Name,Student ID,Score,Max Score\n";
+    
+    results.forEach((result, index) => {
+      const rank = index + 1;
+      const name = result.studentName ? result.studentName.replace(/,/g, '') : 'Unknown';
+      const id = result.studentId ? result.studentId.replace(/,/g, '') : 'Unknown';
+      const score = result.totalScore;
+      const max = result.maxScore;
+      csvContent += `${rank},${name},${id},${score},${max}\n`;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${examTitle ? examTitle.replace(/\s+/g, '_') : 'Exam'}_Leaderboard.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const clearResultsForExam = async (examId) => {
     if (window.confirm("Are you sure you want to clear all results for this exam?")) {
       const q = query(collection(db, 'studentResults'), where('examId', '==', examId));
@@ -546,9 +571,21 @@ const AdminDashboard = ({ onBackToLogin }) => {
             <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span>🏆</span> {exam.title} - Leaderboard
             </h3>
-            <button onClick={() => clearResultsForExam(exam.id)} style={{ background: 'none', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', fontSize: '0.9rem' }} onMouseOver={(e) => { e.target.style.backgroundColor = 'var(--danger)'; e.target.style.color = 'white'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = 'var(--danger)'; }}>
-              Reset Results
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {sortedResults.length > 0 && (
+                <button 
+                  onClick={() => downloadLeaderboardCSV(sortedResults, exam.title)} 
+                  style={{ background: 'var(--primary)', border: 'none', color: 'white', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }} 
+                  onMouseOver={(e) => e.target.style.opacity = '0.9'} 
+                  onMouseOut={(e) => e.target.style.opacity = '1'}
+                >
+                  📥 Download CSV
+                </button>
+              )}
+              <button onClick={() => clearResultsForExam(exam.id)} style={{ background: 'none', border: '1px solid var(--danger)', color: 'var(--danger)', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s', fontSize: '0.9rem' }} onMouseOver={(e) => { e.target.style.backgroundColor = 'var(--danger)'; e.target.style.color = 'white'; }} onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = 'var(--danger)'; }}>
+                Reset Results
+              </button>
+            </div>
           </div>
           
           {sortedResults.length === 0 ? (
@@ -589,7 +626,37 @@ const AdminDashboard = ({ onBackToLogin }) => {
     );
   };
 
-  const renderQuestionBankView = () => (
+  const renderQuestionBankView = () => {
+    const filteredQuestions = questionBank.filter(q => {
+      if (!questionSearch) return true;
+      const search = questionSearch.toLowerCase();
+      const qNumStr = q.questionNumber?.toString() || '';
+      return qNumStr.includes(search) || q.text.toLowerCase().includes(search) || q.subject?.toLowerCase().includes(search);
+    });
+
+    const groupedQuestions = {};
+    filteredQuestions.forEach(q => {
+      const subj = q.subject || 'General';
+      if (!groupedQuestions[subj]) groupedQuestions[subj] = [];
+      groupedQuestions[subj].push(q);
+    });
+
+    // Sort questions within each subject by question number
+    Object.keys(groupedQuestions).forEach(subj => {
+      groupedQuestions[subj].sort((a, b) => (a.questionNumber || 0) - (b.questionNumber || 0));
+    });
+
+    const subjectOrder = ['Maths', 'Mathematics', 'Physics', 'Chemistry'];
+    const sortedSubjects = Object.keys(groupedQuestions).sort((a, b) => {
+      const idxA = subjectOrder.indexOf(a);
+      const idxB = subjectOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
       {editingQuestion && (
         <QuestionEditor 
@@ -605,7 +672,7 @@ const AdminDashboard = ({ onBackToLogin }) => {
             <span>📚</span> Question Bank
           </h2>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
             <div>
               <input type="checkbox" id="selectAll" 
                 checked={selectedQuestions.length === questionBank.length && questionBank.length > 0}
@@ -635,52 +702,69 @@ const AdminDashboard = ({ onBackToLogin }) => {
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {questionBank.length === 0 ? (
+          <div style={{ marginBottom: '20px' }}>
+            <input 
+              type="text" 
+              placeholder="Search by question number (e.g. 15), text, or subject..." 
+              value={questionSearch}
+              onChange={(e) => setQuestionSearch(e.target.value)}
+              style={{ width: '100%', padding: '10px 15px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.95rem', outline: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {filteredQuestions.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                No questions in bank. Upload a PDF to extract questions.
+                {questionBank.length === 0 ? 'No questions in bank. Upload a PDF to extract questions.' : 'No matching questions found.'}
               </div>
             ) : (
-              questionBank.map(q => (
-                <div key={q.docId} style={{ display: 'flex', gap: '15px', padding: '15px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: selectedQuestions.includes(q.docId) ? 'rgba(37, 99, 235, 0.05)' : 'transparent' }}>
-                  <input type="checkbox" 
-                    checked={selectedQuestions.includes(q.docId)}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedQuestions([...selectedQuestions, q.docId]);
-                      else setSelectedQuestions(selectedQuestions.filter(id => id !== q.docId));
-                    }}
-                    style={{ marginTop: '5px' }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)', backgroundColor: 'rgba(37, 99, 235, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>
-                        {q.subject}
-                      </span>
-                      <div>
-                        <button onClick={() => setEditingQuestion(q)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', marginRight: '10px' }}>✏️ Edit</button>
-                        <button onClick={() => handleDeleteQuestion(q.docId)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>🗑️</button>
-                      </div>
-                    </div>
-                    <p style={{ margin: '10px 0', fontWeight: '500' }}>
-                      {q.questionNumber && <span style={{color: 'var(--text-muted)', marginRight: '8px'}}>Q{q.questionNumber}.</span>}
-                      {q.text}
-                      {q.hasImageOrDiagram && !q.questionImageUrl && <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 'bold' }}>[⚠️ Requires Image Upload]</span>}
-                    </p>
-                    {q.questionImageUrl && (
-                      <div style={{ marginBottom: '10px' }}>
-                        <img src={q.questionImageUrl} alt="Question" style={{ maxHeight: '100px', maxWidth: '100%', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
-                      </div>
-                    )}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                      {q.options.map((opt, i) => (
-                        <div key={i} style={{ color: q.correctAnswer === i ? 'var(--success)' : 'inherit', fontWeight: q.correctAnswer === i ? 'bold' : 'normal', display: 'flex', flexDirection: 'column' }}>
-                          <span>{String.fromCharCode(65 + i)}) {opt}</span>
-                          {q.optionImageUrls?.[i] && (
-                            <img src={q.optionImageUrls[i]} alt={`Option ${i}`} style={{ maxHeight: '60px', maxWidth: '100%', borderRadius: '4px', marginTop: '4px', alignSelf: 'flex-start' }} />
+              sortedSubjects.map(subject => (
+                <div key={subject}>
+                  <h3 style={{ margin: '0 0 15px 0', paddingBottom: '8px', borderBottom: '2px solid var(--border-color)', color: 'var(--text-main)' }}>{subject}</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {groupedQuestions[subject].map(q => (
+                      <div key={q.docId} style={{ display: 'flex', gap: '15px', padding: '15px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: selectedQuestions.includes(q.docId) ? 'rgba(37, 99, 235, 0.05)' : 'transparent' }}>
+                        <input type="checkbox" 
+                          checked={selectedQuestions.includes(q.docId)}
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedQuestions([...selectedQuestions, q.docId]);
+                            else setSelectedQuestions(selectedQuestions.filter(id => id !== q.docId));
+                          }}
+                          style={{ marginTop: '5px' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)', backgroundColor: 'rgba(37, 99, 235, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>
+                              {q.subject}
+                            </span>
+                            <div>
+                              <button onClick={() => setEditingQuestion(q)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', marginRight: '10px' }}>✏️ Edit</button>
+                              <button onClick={() => handleDeleteQuestion(q.docId)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>🗑️</button>
+                            </div>
+                          </div>
+                          <p style={{ margin: '10px 0', fontWeight: '500' }}>
+                            {q.questionNumber && <span style={{color: 'var(--text-muted)', marginRight: '8px'}}>Q{q.questionNumber}.</span>}
+                            {q.text}
+                            {q.hasImageOrDiagram && !q.questionImageUrl && <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 'bold' }}>[⚠️ Requires Image Upload]</span>}
+                          </p>
+                          {q.questionImageUrl && (
+                            <div style={{ marginBottom: '10px' }}>
+                              <img src={q.questionImageUrl} alt="Question" style={{ maxHeight: '100px', maxWidth: '100%', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
+                            </div>
                           )}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                            {q.options.map((opt, i) => (
+                              <div key={i} style={{ color: q.correctAnswer === i ? 'var(--success)' : 'inherit', fontWeight: q.correctAnswer === i ? 'bold' : 'normal', display: 'flex', flexDirection: 'column' }}>
+                                <span>{String.fromCharCode(65 + i)}) {opt}</span>
+                                {q.optionImageUrls?.[i] && (
+                                  <img src={q.optionImageUrls[i]} alt={`Option ${i}`} style={{ maxHeight: '60px', maxWidth: '100%', borderRadius: '4px', marginTop: '4px', alignSelf: 'flex-start' }} />
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))
@@ -725,6 +809,7 @@ const AdminDashboard = ({ onBackToLogin }) => {
       </div>
     </div>
   );
+  };
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f8fafc', overflow: 'hidden', fontFamily: "'Inter', sans-serif" }}>
