@@ -665,13 +665,19 @@ const AdminDashboard = ({ onBackToLogin }) => {
                       {q.questionNumber && <span style={{color: 'var(--text-muted)', marginRight: '8px'}}>Q{q.questionNumber}.</span>}
                       {q.text}
                       {q.hasImageOrDiagram && !q.questionImageUrl && <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 'bold' }}>[⚠️ Requires Image Upload]</span>}
-                      {q.questionImageUrl && <span style={{ marginLeft: '10px', fontSize: '0.8rem', color: 'var(--success)' }}>[🖼️ Image Attached]</span>}
                     </p>
+                    {q.questionImageUrl && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <img src={q.questionImageUrl} alt="Question" style={{ maxHeight: '100px', maxWidth: '100%', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
+                      </div>
+                    )}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                       {q.options.map((opt, i) => (
-                        <div key={i} style={{ color: q.correctAnswer === i ? 'var(--success)' : 'inherit', fontWeight: q.correctAnswer === i ? 'bold' : 'normal' }}>
-                          {String.fromCharCode(65 + i)}) {opt}
-                          {q.optionImageUrls?.[i] && ' 🖼️'}
+                        <div key={i} style={{ color: q.correctAnswer === i ? 'var(--success)' : 'inherit', fontWeight: q.correctAnswer === i ? 'bold' : 'normal', display: 'flex', flexDirection: 'column' }}>
+                          <span>{String.fromCharCode(65 + i)}) {opt}</span>
+                          {q.optionImageUrls?.[i] && (
+                            <img src={q.optionImageUrls[i]} alt={`Option ${i}`} style={{ maxHeight: '60px', maxWidth: '100%', borderRadius: '4px', marginTop: '4px', alignSelf: 'flex-start' }} />
+                          )}
                         </div>
                       ))}
                     </div>

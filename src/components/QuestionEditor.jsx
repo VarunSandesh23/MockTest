@@ -77,22 +77,47 @@ const QuestionEditor = ({ question, onSave, onCancel }) => {
 
     setUploading(true);
     try {
-      const storageRef = ref(storage, `question_images/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          let width = img.width;
+          let height = img.height;
 
-      if (field === 'question') {
-        setEditedQ({ ...editedQ, questionImageUrl: url });
-      } else {
-        const newOptionImages = [...editedQ.optionImageUrls];
-        newOptionImages[field] = url;
-        setEditedQ({ ...editedQ, optionImageUrls: newOptionImages });
-      }
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Compress to JPEG with 0.7 quality to save space
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+
+          if (field === 'question') {
+            setEditedQ(prev => ({ ...prev, questionImageUrl: dataUrl }));
+          } else {
+            setEditedQ(prev => {
+              const newOptionImages = [...prev.optionImageUrls];
+              newOptionImages[field] = dataUrl;
+              return { ...prev, optionImageUrls: newOptionImages };
+            });
+          }
+          setUploading(false);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
     } catch (err) {
-      console.error("Upload failed", err);
-      alert("Failed to upload image.");
+      console.error("Image processing failed", err);
+      alert("Failed to process image.");
+      setUploading(false);
     }
-    setUploading(false);
     e.target.value = null; // reset input
   };
 
