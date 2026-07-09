@@ -141,7 +141,7 @@ function App() {
 
   // Auto-save active sessions to Firestore
   useEffect(() => {
-    if (examState === 'ACTIVE' && currentStudent && activeExam && userResponses) {
+    if (examState === 'ACTIVE' && currentStudent && activeExam && userResponses && examData) {
       const saveSession = async () => {
         try {
           const docId = `${currentStudent.id}_${activeExam.id}`;
@@ -149,6 +149,7 @@ function App() {
             studentId: currentStudent.id,
             examId: activeExam.id,
             userResponses,
+            jumbledExamData: examData,
             updatedAt: new Date().toISOString()
           });
         } catch (err) {
@@ -157,7 +158,7 @@ function App() {
       };
       saveSession();
     }
-  }, [userResponses, examState, currentStudent, activeExam]);
+  }, [userResponses, examState, currentStudent, activeExam, examData]);
 
   const terminateExam = useCallback(() => {
     setExamState('TERMINATED');
@@ -234,37 +235,70 @@ function App() {
     };
   }, [examState, terminateExam]);
 
+  // Helper to randomly shuffle an array (Fisher-Yates shuffle)
+  const shuffleArray = (arr) => {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
   const handleStartExamFlow = async (exam) => {
     setActiveExam(exam);
-    const data = exam.questionsData;
-    setExamData(data);
-    setActiveSubject(data.subjects[0]);
-    
-    const indices = {};
-    data.subjects.forEach(sub => indices[sub] = 0);
-    setCurrentIndices(indices);
+    const data = exam.questionsData || { subjects: [], questions: {} };
 
     let restoredResponses = null;
+    let restoredExamData = null;
     if (currentStudent) {
       try {
         const sessionDoc = await getDoc(doc(db, 'activeSessions', `${currentStudent.id}_${exam.id}`));
         if (sessionDoc.exists()) {
-          restoredResponses = sessionDoc.data().userResponses;
+          const sessionData = sessionDoc.data();
+          restoredResponses = sessionData.userResponses || null;
+          restoredExamData = sessionData.jumbledExamData || null;
         }
       } catch (err) {
         console.error("Failed to restore session", err);
       }
     }
 
-    if (restoredResponses) {
+    let finalExamData;
+    if (restoredExamData && restoredResponses) {
+      finalExamData = restoredExamData;
+    } else {
+      // Jumble / shuffle questions for each subject so every student gets a randomized order
+      const jumbledQuestions = {};
+      (data.subjects || []).forEach(sub => {
+        const subQuestions = data.questions?.[sub] || [];
+        jumbledQuestions[sub] = shuffleArray(subQuestions);
+      });
+      finalExamData = {
+        ...data,
+        questions: jumbledQuestions
+      };
+    }
+
+    setExamData(finalExamData);
+    const firstSub = finalExamData.subjects?.[0] || 'Physics';
+    setActiveSubject(firstSub);
+    
+    const indices = {};
+    (finalExamData.subjects || []).forEach(sub => { indices[sub] = 0; });
+    setCurrentIndices(indices);
+
+    if (restoredResponses && restoredExamData) {
       setUserResponses(restoredResponses);
     } else {
       const initialState = {};
-      data.subjects.forEach(sub => {
-        const numQs = data.questions[sub].length;
+      (finalExamData.subjects || []).forEach(sub => {
+        const numQs = (finalExamData.questions?.[sub] || []).length;
         initialState[sub] = Array(numQs).fill({ selectedOption: null, status: 'NOT_VISITED' });
       });
-      initialState[data.subjects[0]][0] = { selectedOption: null, status: 'NOT_ANSWERED' };
+      if (firstSub && initialState[firstSub] && initialState[firstSub][0]) {
+        initialState[firstSub][0] = { selectedOption: null, status: 'NOT_ANSWERED' };
+      }
       setUserResponses(initialState);
     }
     
