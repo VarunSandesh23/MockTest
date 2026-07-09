@@ -71,6 +71,32 @@ function App() {
     };
   }, []);
 
+  // Automatically sync missing default/mock students to Firestore
+  useEffect(() => {
+    const syncStudentsToFirestore = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'students'));
+        const existingIds = new Set(
+          querySnapshot.docs.map(doc => (doc.data().id || '').trim().toUpperCase())
+        );
+        for (const student of mockData.students) {
+          const sId = (student.id || '').trim().toUpperCase();
+          if (sId && !existingIds.has(sId)) {
+            await addDoc(collection(db, 'students'), {
+              id: sId,
+              name: student.name,
+              password: student.password || 'student123'
+            });
+            existingIds.add(sId);
+          }
+        }
+      } catch (err) {
+        console.error("Error auto-syncing students to Firestore:", err);
+      }
+    };
+    syncStudentsToFirestore();
+  }, []);
+
   const handleSafeLogout = useCallback(() => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(err => console.error(err));
@@ -302,8 +328,21 @@ function App() {
         const response = userResponses[sub][idx];
         const isAttempted = response.status === 'ANSWERED' || response.status === 'ANSWERED_MARKED';
         
-        if (isAttempted && response.selectedOption !== null) {
-          if (response.selectedOption === q.correctAnswer) {
+        if (isAttempted && response.selectedOption !== null && response.selectedOption !== undefined && response.selectedOption !== '') {
+          let isCorrect = false;
+          if (q.type === 'NUMERICAL' || !q.options || q.options.length === 0) {
+            const userVal = parseFloat(response.selectedOption);
+            const correctVal = parseFloat(q.correctAnswer);
+            if (!isNaN(userVal) && !isNaN(correctVal)) {
+              isCorrect = Math.abs(userVal - correctVal) < 1e-5;
+            } else {
+              isCorrect = String(response.selectedOption).trim() === String(q.correctAnswer).trim();
+            }
+          } else {
+            isCorrect = Number(response.selectedOption) === Number(q.correctAnswer);
+          }
+
+          if (isCorrect) {
             subjectScores[sub] += 4;
             totalScore += 4;
             correct++;
@@ -389,10 +428,34 @@ function App() {
     });
   };
 
+  const changeSubjectAndIndex = (newSubject, newIndex) => {
+    setActiveSubject(newSubject);
+    setCurrentIndices(prev => ({ ...prev, [newSubject]: newIndex }));
+    
+    setUserResponses(prev => {
+      const currentStatus = prev[newSubject][newIndex].status;
+      if (currentStatus === 'NOT_VISITED') {
+        const newResponses = { ...prev };
+        newResponses[newSubject] = [...newResponses[newSubject]];
+        newResponses[newSubject][newIndex] = { 
+          ...newResponses[newSubject][newIndex], 
+          status: 'NOT_ANSWERED' 
+        };
+        return newResponses;
+      }
+      return prev;
+    });
+  };
+
   const goNext = () => {
     const currentIndex = currentIndices[activeSubject];
     if (currentIndex < examData.questions[activeSubject].length - 1) {
       changeQuestion(currentIndex + 1);
+    } else {
+      const subjectIndex = examData.subjects.indexOf(activeSubject);
+      if (subjectIndex < examData.subjects.length - 1) {
+        changeSubjectAndIndex(examData.subjects[subjectIndex + 1], 0);
+      }
     }
   };
 
@@ -400,6 +463,13 @@ function App() {
     const currentIndex = currentIndices[activeSubject];
     if (currentIndex > 0) {
       changeQuestion(currentIndex - 1);
+    } else {
+      const subjectIndex = examData.subjects.indexOf(activeSubject);
+      if (subjectIndex > 0) {
+        const prevSubject = examData.subjects[subjectIndex - 1];
+        const lastIndex = examData.questions[prevSubject].length - 1;
+        changeSubjectAndIndex(prevSubject, lastIndex);
+      }
     }
   };
 
@@ -484,6 +554,10 @@ function App() {
   const currentResponse = userResponses[activeSubject][currentQIndex];
   const totalSubQuestions = examData.questions[activeSubject].length;
 
+  const subjectIndex = examData.subjects.indexOf(activeSubject);
+  const isFirstQuestionOfExam = subjectIndex === 0 && currentQIndex === 0;
+  const isLastQuestionOfExam = subjectIndex === examData.subjects.length - 1 && currentQIndex === totalSubQuestions - 1;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       {offlineSince && examState === 'ACTIVE' && (
@@ -558,6 +632,8 @@ function App() {
           goNext={goNext}
           goPrev={goPrev}
           submitExam={submitExam}
+          isFirstQuestionOfExam={isFirstQuestionOfExam}
+          isLastQuestionOfExam={isLastQuestionOfExam}
         />
         <GridPanel 
           totalQuestions={totalSubQuestions}

@@ -7,7 +7,7 @@ const JEE_SYMBOLS = {
   Chemistry: ['⇌', '⇄', '↑', '↓', '°C', '∆H', '∆S', '∆G', 'E°']
 };
 
-const QuestionEditor = ({ question, onSave, onCancel }) => {
+const QuestionEditor = ({ question, onSave, onCancel, existingQuestions }) => {
   const [editedQ, setEditedQ] = useState({
     ...question,
     options: question.options || ['', '', '', ''],
@@ -119,6 +119,65 @@ const QuestionEditor = ({ question, onSave, onCancel }) => {
     e.target.value = null; // reset input
   };
 
+  const validateAndSave = () => {
+    const trimmedText = (editedQ.text || '').trim();
+    if (!trimmedText && !editedQ.questionImageUrl) {
+      alert("Please enter a Question Prompt or upload a question image.");
+      return;
+    }
+
+    const isNumerical = editedQ.type === 'NUMERICAL';
+    const options = isNumerical ? [] : (editedQ.options || []).map(o => (o || '').trim());
+    
+    if (!isNumerical) {
+      for (let i = 0; i < 4; i++) {
+        const optText = options[i];
+        const optImg = editedQ.optionImageUrls && editedQ.optionImageUrls[i];
+        if (!optText && !optImg) {
+          alert(`Please provide text or an image for Option ${String.fromCharCode(65 + i)}.`);
+          return;
+        }
+      }
+
+      // Check duplicate options within the question
+      const uniqueOptions = new Set();
+      for (let i = 0; i < 4; i++) {
+        const optText = options[i].toLowerCase();
+        const optImg = editedQ.optionImageUrls && editedQ.optionImageUrls[i];
+        const key = optImg ? `img:${optImg}` : `text:${optText}`;
+        if (uniqueOptions.has(key)) {
+          alert(`Duplicate option detected: Option ${String.fromCharCode(65 + i)} is identical to another option. Please ensure all 4 options are distinct.`);
+          return;
+        }
+        uniqueOptions.add(key);
+      }
+    } else {
+      if (editedQ.correctAnswer === '' || editedQ.correctAnswer === null || editedQ.correctAnswer === undefined || isNaN(Number(editedQ.correctAnswer))) {
+        alert("Please enter a valid numerical value for the Correct Answer.");
+        return;
+      }
+    }
+
+    // Check duplicate question in question bank
+    if (existingQuestions && existingQuestions.length > 0) {
+      const isDuplicateQ = existingQuestions.some(q => {
+        if (q.docId === editedQ.docId) return false; // Ignore self when editing
+        const existingText = (q.text || '').trim().toLowerCase();
+        return existingText && existingText === trimmedText.toLowerCase();
+      });
+      if (isDuplicateQ && trimmedText !== '') {
+        alert("A question with this exact prompt already exists in the Question Bank!");
+        return;
+      }
+    }
+
+    onSave({
+      ...editedQ,
+      text: trimmedText,
+      options: options
+    });
+  };
+
   const modalContent = (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
       <div style={{ backgroundColor: 'var(--panel-bg)', padding: '30px', borderRadius: '12px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
@@ -133,6 +192,7 @@ const QuestionEditor = ({ question, onSave, onCancel }) => {
             {['All', ...Object.keys(JEE_SYMBOLS)].map(cat => (
               <button 
                 key={cat} 
+                type="button"
                 onClick={() => setActiveCategory(cat)}
                 style={{ padding: '5px 12px', borderRadius: '20px', border: 'none', backgroundColor: activeCategory === cat ? 'var(--primary)' : 'rgba(0,0,0,0.05)', color: activeCategory === cat ? 'white' : 'var(--text-main)', cursor: 'pointer', fontWeight: 'bold' }}
               >
@@ -144,6 +204,7 @@ const QuestionEditor = ({ question, onSave, onCancel }) => {
             {getSymbolsToDisplay().map((sym, idx) => (
               <button 
                 key={`${sym}-${idx}`} 
+                type="button"
                 onClick={() => insertSymbol(sym)}
                 style={{ width: '35px', height: '35px', fontSize: '1.1rem', backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                 title={`Insert ${sym}`}
@@ -156,6 +217,41 @@ const QuestionEditor = ({ question, onSave, onCancel }) => {
           </div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px', fontStyle: 'italic' }}>
             Click a symbol to insert it into the currently active text box.
+          </div>
+        </div>
+
+        {/* Type & Subject Selection */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px', padding: '15px', backgroundColor: 'rgba(37, 99, 235, 0.03)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', color: 'var(--text-main)' }}>Question Type</label>
+            <select
+              value={editedQ.type || 'MCQ'}
+              onChange={(e) => {
+                const newType = e.target.value;
+                setEditedQ({
+                  ...editedQ,
+                  type: newType,
+                  correctAnswer: newType === 'NUMERICAL' ? '' : 0
+                });
+              }}
+              style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontWeight: 'bold', backgroundColor: 'white' }}
+            >
+              <option value="MCQ">Multiple Choice Question (MCQ)</option>
+              <option value="NUMERICAL">Numerical Answer Type (NAT)</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '6px', color: 'var(--text-main)' }}>Subject</label>
+            <select
+              value={editedQ.subject || 'Physics'}
+              onChange={(e) => setEditedQ({ ...editedQ, subject: e.target.value })}
+              style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', fontWeight: 'bold', backgroundColor: 'white' }}
+            >
+              <option value="Physics">Physics</option>
+              <option value="Chemistry">Chemistry</option>
+              <option value="Mathematics">Mathematics</option>
+              <option value="General">General / Other</option>
+            </select>
           </div>
         </div>
 
@@ -177,61 +273,87 @@ const QuestionEditor = ({ question, onSave, onCancel }) => {
             {editedQ.questionImageUrl && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <img src={editedQ.questionImageUrl} alt="Question" style={{ height: '40px', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
-                <button onClick={() => setEditedQ({...editedQ, questionImageUrl: null})} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                <button type="button" onClick={() => setEditedQ({...editedQ, questionImageUrl: null})} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Options */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Option {String.fromCharCode(65 + i)}</label>
-              <textarea 
-                ref={textRefs[i]}
-                value={editedQ.options[i]} 
-                onChange={(e) => handleTextChange(i, e.target.value)}
-                onFocus={() => setFocusedField(i)}
-                style={{ width: '100%', height: '50px', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', resize: 'vertical' }}
+        {/* Options / Numerical Answer */}
+        {editedQ.type === 'NUMERICAL' ? (
+          <div style={{ padding: '20px', backgroundColor: 'rgba(245, 158, 11, 0.05)', borderRadius: '8px', border: '2px dashed var(--warning)', marginBottom: '20px' }}>
+            <h4 style={{ margin: '0 0 10px', color: '#b45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🔢</span> Numerical Answer Type (NAT)
+            </h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px' }}>
+              This question does not have multiple choice options. The student will enter a numerical value directly into an input box or keypad.
+            </p>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-main)' }}>Exact Correct Answer (Integer or Decimal):</label>
+              <input
+                type="number"
+                step="any"
+                placeholder="e.g. 250, 9.8, -3.14"
+                value={editedQ.correctAnswer !== null && editedQ.correctAnswer !== undefined ? editedQ.correctAnswer : ''}
+                onChange={(e) => setEditedQ({ ...editedQ, correctAnswer: e.target.value === '' ? '' : Number(e.target.value) })}
+                style={{ width: '100%', maxWidth: '300px', padding: '12px 15px', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '6px', border: '2px solid var(--warning)', outline: 'none', backgroundColor: 'white' }}
               />
-              <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input type="file" id={`opt-img-${i}`} accept="image/*" onChange={(e) => handleImageUpload(e, i)} style={{ display: 'none' }} disabled={uploading} />
-                <label htmlFor={`opt-img-${i}`} style={{ fontSize: '0.85rem', cursor: 'pointer', color: 'var(--primary)', fontWeight: 'bold' }}>
-                  {uploading ? '...' : '+ Add Image'}
-                </label>
-                {editedQ.optionImageUrls[i] && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <img src={editedQ.optionImageUrls[i]} alt={`Option ${i}`} style={{ height: '30px', borderRadius: '4px' }} />
-                    <button onClick={() => {
-                      const newArr = [...editedQ.optionImageUrls];
-                      newArr[i] = null;
-                      setEditedQ({...editedQ, optionImageUrls: newArr});
-                    }} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>✖</button>
-                  </div>
-                )}
-              </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Option {String.fromCharCode(65 + i)}</label>
+                <textarea 
+                  ref={textRefs[i]}
+                  value={editedQ.options[i]} 
+                  onChange={(e) => handleTextChange(i, e.target.value)}
+                  onFocus={() => setFocusedField(i)}
+                  style={{ width: '100%', height: '50px', padding: '10px', borderRadius: '6px', border: '1px solid var(--border-color)', resize: 'vertical' }}
+                />
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input type="file" id={`opt-img-${i}`} accept="image/*" onChange={(e) => handleImageUpload(e, i)} style={{ display: 'none' }} disabled={uploading} />
+                  <label htmlFor={`opt-img-${i}`} style={{ fontSize: '0.85rem', cursor: 'pointer', color: 'var(--primary)', fontWeight: 'bold' }}>
+                    {uploading ? '...' : '+ Add Image'}
+                  </label>
+                  {editedQ.optionImageUrls[i] && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <img src={editedQ.optionImageUrls[i]} alt={`Option ${i}`} style={{ height: '30px', borderRadius: '4px' }} />
+                      <button type="button" onClick={() => {
+                        const newArr = [...editedQ.optionImageUrls];
+                        newArr[i] = null;
+                        setEditedQ({...editedQ, optionImageUrls: newArr});
+                      }} style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}>✖</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Correct Answer & Save */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
           <div>
-            <label style={{ fontWeight: 'bold', marginRight: '10px' }}>Correct Answer:</label>
-            <select 
-              value={editedQ.correctAnswer} 
-              onChange={(e) => setEditedQ({...editedQ, correctAnswer: parseInt(e.target.value)})}
-              style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '1rem' }}
-            >
-              {[0, 1, 2, 3].map(i => (
-                <option key={i} value={i}>Option {String.fromCharCode(65 + i)}</option>
-              ))}
-            </select>
+            {editedQ.type !== 'NUMERICAL' && (
+              <>
+                <label style={{ fontWeight: 'bold', marginRight: '10px' }}>Correct Answer:</label>
+                <select 
+                  value={editedQ.correctAnswer} 
+                  onChange={(e) => setEditedQ({...editedQ, correctAnswer: parseInt(e.target.value)})}
+                  style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '1rem' }}
+                >
+                  {[0, 1, 2, 3].map(i => (
+                    <option key={i} value={i}>Option {String.fromCharCode(65 + i)}</option>
+                  ))}
+                </select>
+              </>
+            )}
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn-outline" onClick={onCancel} style={{ padding: '10px 20px' }}>Cancel</button>
-            <button className="btn-primary" onClick={() => onSave(editedQ)} style={{ padding: '10px 20px' }} disabled={uploading}>Save Changes</button>
+            <button type="button" className="btn-outline" onClick={onCancel} style={{ padding: '10px 20px' }}>Cancel</button>
+            <button type="button" className="btn-primary" onClick={validateAndSave} style={{ padding: '10px 20px' }} disabled={uploading}>Save Changes</button>
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, addDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../firebase';
+import { mockData } from '../mockData';
 
 const AuthPortal = ({ onStudentLogin, onAdminLogin }) => {
   const [role, setRole] = useState('STUDENT'); // 'STUDENT' or 'ADMIN'
@@ -15,12 +16,34 @@ const AuthPortal = ({ onStudentLogin, onAdminLogin }) => {
 
     if (role === 'STUDENT') {
       try {
+        const cleanUsername = username.trim().toUpperCase();
+        const cleanPassword = password.trim();
+
         const q = query(
           collection(db, 'students'), 
-          where('id', '==', username), 
-          where('password', '==', password)
+          where('id', '==', cleanUsername), 
+          where('password', '==', cleanPassword)
         );
-        const querySnapshot = await getDocs(q);
+        let querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          const fallbackStudent = mockData.students.find(
+            s => s.id.trim().toUpperCase() === cleanUsername && s.password === cleanPassword
+          );
+          if (fallbackStudent) {
+            await addDoc(collection(db, 'students'), {
+              id: fallbackStudent.id.trim().toUpperCase(),
+              name: fallbackStudent.name,
+              password: fallbackStudent.password
+            });
+            const qRetry = query(
+              collection(db, 'students'),
+              where('id', '==', cleanUsername),
+              where('password', '==', cleanPassword)
+            );
+            querySnapshot = await getDocs(qRetry);
+          }
+        }
         
         if (!querySnapshot.empty) {
           const studentDoc = querySnapshot.docs[0];

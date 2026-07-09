@@ -6,6 +6,7 @@ import { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where
 import { db } from '../firebase';
 import WebRTCPlayer from './WebRTCPlayer';
 import QuestionEditor from './QuestionEditor';
+import ExamQuestionsArchive from './ExamQuestionsArchive';
 
 const AdminDashboard = ({ onBackToLogin }) => {
   const [exams, setExams] = useState([]);
@@ -130,27 +131,86 @@ const AdminDashboard = ({ onBackToLogin }) => {
   };
 
   const handleSaveQuestion = async (editedQ) => {
-    if (editedQ.docId === 'new') {
-      await addDoc(collection(db, 'questionBank'), {
-        subject: editedQ.subject || 'Custom',
-        text: editedQ.text,
-        options: editedQ.options,
-        correctAnswer: editedQ.correctAnswer,
-        questionImageUrl: editedQ.questionImageUrl || null,
-        optionImageUrls: editedQ.optionImageUrls || null,
-        createdAt: new Date().toISOString()
-      });
-    } else {
-      const qRef = doc(db, 'questionBank', editedQ.docId);
-      await updateDoc(qRef, {
-        text: editedQ.text,
-        options: editedQ.options,
-        correctAnswer: editedQ.correctAnswer,
-        questionImageUrl: editedQ.questionImageUrl || null,
-        optionImageUrls: editedQ.optionImageUrls || null,
-      });
+    const trimmedText = (editedQ.text || '').trim();
+    if (!trimmedText && !editedQ.questionImageUrl) {
+      alert("Please enter a Question Prompt or upload a question image.");
+      return;
     }
-    setEditingQuestion(null);
+
+    const isNumerical = editedQ.type === 'NUMERICAL';
+    const options = isNumerical ? [] : (editedQ.options || []).map(o => (o || '').trim());
+    
+    if (!isNumerical) {
+      for (let i = 0; i < 4; i++) {
+        if (!options[i] && !(editedQ.optionImageUrls && editedQ.optionImageUrls[i])) {
+          alert(`Please provide text or an image for Option ${String.fromCharCode(65 + i)}.`);
+          return;
+        }
+      }
+
+      // Check duplicate options within the question
+      const uniqueOptions = new Set();
+      for (let i = 0; i < 4; i++) {
+        const optText = options[i].toLowerCase();
+        const optImg = editedQ.optionImageUrls && editedQ.optionImageUrls[i];
+        const key = optImg ? `img:${optImg}` : `text:${optText}`;
+        if (uniqueOptions.has(key)) {
+          alert(`Duplicate option detected: Option ${String.fromCharCode(65 + i)} is identical to another option.`);
+          return;
+        }
+        uniqueOptions.add(key);
+      }
+    } else {
+      if (editedQ.correctAnswer === '' || editedQ.correctAnswer === null || editedQ.correctAnswer === undefined || isNaN(Number(editedQ.correctAnswer))) {
+        alert("Please enter a valid numerical value for the Correct Answer.");
+        return;
+      }
+    }
+
+    // Check duplicate question in questionBank
+    if (questionBank.length > 0) {
+      const isDuplicateQ = questionBank.some(q => {
+        if (q.docId === editedQ.docId) return false;
+        const existingText = (q.text || '').trim().toLowerCase();
+        return existingText && existingText === trimmedText.toLowerCase();
+      });
+      if (isDuplicateQ && trimmedText !== '') {
+        alert("A question with this exact prompt already exists in the Question Bank!");
+        return;
+      }
+    }
+
+    try {
+      if (editedQ.docId === 'new') {
+        await addDoc(collection(db, 'questionBank'), {
+          subject: editedQ.subject || 'Custom',
+          type: editedQ.type || 'MCQ',
+          text: trimmedText,
+          options: options,
+          correctAnswer: editedQ.correctAnswer,
+          questionImageUrl: editedQ.questionImageUrl || null,
+          optionImageUrls: editedQ.optionImageUrls || null,
+          createdAt: new Date().toISOString()
+        });
+        alert("Question created successfully and added to the Question Bank!");
+      } else {
+        const qRef = doc(db, 'questionBank', editedQ.docId);
+        await updateDoc(qRef, {
+          subject: editedQ.subject || 'Custom',
+          type: editedQ.type || 'MCQ',
+          text: trimmedText,
+          options: options,
+          correctAnswer: editedQ.correctAnswer,
+          questionImageUrl: editedQ.questionImageUrl || null,
+          optionImageUrls: editedQ.optionImageUrls || null,
+        });
+        alert("Question updated successfully!");
+      }
+      setEditingQuestion(null);
+    } catch (err) {
+      console.error("Error saving question:", err);
+      alert("Failed to save question. Please try again.");
+    }
   };
 
   const handleDeleteQuestion = async (docId) => {
@@ -169,13 +229,15 @@ const AdminDashboard = ({ onBackToLogin }) => {
     }
   };
 
-  const handleAddBlankQuestion = () => {
+  const handleAddBlankQuestion = (qType = 'MCQ') => {
+    const isNumerical = qType === 'NUMERICAL';
     setEditingQuestion({
       docId: 'new',
-      subject: 'Custom',
+      subject: 'Physics',
+      type: isNumerical ? 'NUMERICAL' : 'MCQ',
       text: '',
-      options: ['', '', '', ''],
-      correctAnswer: 0,
+      options: isNumerical ? [] : ['', '', '', ''],
+      correctAnswer: isNumerical ? '' : 0,
       questionImageUrl: null,
       optionImageUrls: [null, null, null, null]
     });
@@ -270,14 +332,44 @@ const AdminDashboard = ({ onBackToLogin }) => {
   };
 
   const handleAddStudent = async () => {
-    if (!newStudentName.trim() || !newStudentId.trim()) return;
-    await addDoc(collection(db, 'students'), {
-      name: newStudentName,
-      id: newStudentId,
-      password: 'student123'
-    });
-    setNewStudentName('');
-    setNewStudentId('');
+    if (!newStudentName.trim() || !newStudentId.trim()) {
+      alert("Please enter both Student Name and Student ID.");
+      return;
+    }
+
+    const trimmedId = newStudentId.trim();
+    const trimmedName = newStudentName.trim();
+
+    // Check against real-time local list (case-insensitive)
+    const isDuplicate = studentsList.some(
+      s => s.id && s.id.trim().toLowerCase() === trimmedId.toLowerCase()
+    );
+
+    if (isDuplicate) {
+      alert(`A student with ID "${trimmedId}" already exists!`);
+      return;
+    }
+
+    // Double check directly with Firestore to ensure no duplicate IDs exist
+    try {
+      const q = query(collection(db, 'students'), where('id', '==', trimmedId));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        alert(`A student with ID "${trimmedId}" already exists in the database!`);
+        return;
+      }
+
+      await addDoc(collection(db, 'students'), {
+        name: trimmedName,
+        id: trimmedId,
+        password: 'student123'
+      });
+      setNewStudentName('');
+      setNewStudentId('');
+    } catch (err) {
+      console.error("Error adding student:", err);
+      alert("Failed to add student. Please try again.");
+    }
   };
 
   const handleDeleteStudent = async (docId) => {
@@ -291,8 +383,8 @@ const AdminDashboard = ({ onBackToLogin }) => {
       <h2 style={{ marginBottom: '20px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}><span>👥</span> Student Roster</h2>
       
       <div style={{ display: 'flex', gap: '10px', marginBottom: '30px' }}>
-        <input type="text" placeholder="Student Name" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
-        <input type="text" placeholder="Student ID (e.g. N24...)" value={newStudentId} onChange={e => setNewStudentId(e.target.value)} style={{ flex: 1, padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
+        <input type="text" placeholder="Student Name" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddStudent()} style={{ flex: 1, padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
+        <input type="text" placeholder="Student ID (e.g. N24...)" value={newStudentId} onChange={e => setNewStudentId(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddStudent()} style={{ flex: 1, padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)' }} />
         <button className="btn-primary" onClick={handleAddStudent} style={{ padding: '0 24px' }}>Add Student</button>
       </div>
 
@@ -565,6 +657,9 @@ const AdminDashboard = ({ onBackToLogin }) => {
           </div>
         )}
 
+        {/* Exam Question Paper Archive */}
+        <ExamQuestionsArchive exam={exam} />
+
         {/* Leaderboard Section */}
         <div style={{ backgroundColor: 'var(--panel-bg)', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', border: '1px solid var(--border-color)', flex: 1, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
@@ -661,6 +756,7 @@ const AdminDashboard = ({ onBackToLogin }) => {
       {editingQuestion && (
         <QuestionEditor 
           question={editingQuestion} 
+          existingQuestions={questionBank}
           onSave={handleSaveQuestion} 
           onCancel={() => setEditingQuestion(null)} 
         />
@@ -693,13 +789,22 @@ const AdminDashboard = ({ onBackToLogin }) => {
                 🗑️ Delete All Questions
               </button>
             )}
-            <button 
-              className="btn-primary" 
-              onClick={handleAddBlankQuestion}
-              style={{ marginLeft: 'auto', padding: '6px 12px', fontSize: '0.9rem' }}
-            >
-              + Create Blank Question
-            </button>
+            <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+              <button 
+                className="btn-outline" 
+                onClick={() => handleAddBlankQuestion('MCQ')}
+                style={{ padding: '6px 12px', fontSize: '0.85rem', fontWeight: 'bold', borderColor: 'var(--primary)', color: 'var(--primary)', cursor: 'pointer' }}
+              >
+                + Create Blank MCQ
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={() => handleAddBlankQuestion('NUMERICAL')}
+                style={{ padding: '6px 12px', fontSize: '0.85rem', fontWeight: 'bold', backgroundColor: '#d97706', borderColor: '#d97706', color: 'white', cursor: 'pointer' }}
+              >
+                + Create Blank Numerical (NAT)
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: '20px' }}>
@@ -733,10 +838,15 @@ const AdminDashboard = ({ onBackToLogin }) => {
                           style={{ marginTop: '5px' }}
                         />
                         <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)', backgroundColor: 'rgba(37, 99, 235, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>
-                              {q.subject}
-                            </span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)', backgroundColor: 'rgba(37, 99, 235, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>
+                                {q.subject}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: q.type === 'NUMERICAL' ? '#d97706' : 'var(--success)', backgroundColor: q.type === 'NUMERICAL' ? '#fef3c7' : 'rgba(34, 197, 94, 0.1)', padding: '2px 8px', borderRadius: '10px' }}>
+                                {q.type === 'NUMERICAL' ? 'NUMERICAL VALUE' : 'MCQ'}
+                              </span>
+                            </div>
                             <div>
                               <button onClick={() => setEditingQuestion(q)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', cursor: 'pointer', marginRight: '10px' }}>✏️ Edit</button>
                               <button onClick={() => handleDeleteQuestion(q.docId)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>🗑️</button>
@@ -752,16 +862,22 @@ const AdminDashboard = ({ onBackToLogin }) => {
                               <img src={q.questionImageUrl} alt="Question" style={{ maxHeight: '100px', maxWidth: '100%', borderRadius: '4px', border: '1px solid var(--border-color)' }} />
                             </div>
                           )}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                            {q.options.map((opt, i) => (
-                              <div key={i} style={{ color: q.correctAnswer === i ? 'var(--success)' : 'inherit', fontWeight: q.correctAnswer === i ? 'bold' : 'normal', display: 'flex', flexDirection: 'column' }}>
-                                <span>{String.fromCharCode(65 + i)}) {opt}</span>
-                                {q.optionImageUrls?.[i] && (
-                                  <img src={q.optionImageUrls[i]} alt={`Option ${i}`} style={{ maxHeight: '60px', maxWidth: '100%', borderRadius: '4px', marginTop: '4px', alignSelf: 'flex-start' }} />
-                                )}
-                              </div>
-                            ))}
-                          </div>
+                          {q.type === 'NUMERICAL' || !q.options || q.options.length === 0 ? (
+                            <div style={{ padding: '8px 12px', backgroundColor: '#fef3c7', borderRadius: '6px', border: '1px solid #fde68a', color: '#b45309', fontWeight: 'bold', display: 'inline-block', fontSize: '0.9rem' }}>
+                              🔢 Correct Numerical Answer: {q.correctAnswer}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                              {q.options.map((opt, i) => (
+                                <div key={i} style={{ color: q.correctAnswer === i ? 'var(--success)' : 'inherit', fontWeight: q.correctAnswer === i ? 'bold' : 'normal', display: 'flex', flexDirection: 'column' }}>
+                                  <span>{String.fromCharCode(65 + i)}) {opt}</span>
+                                  {q.optionImageUrls?.[i] && (
+                                    <img src={q.optionImageUrls[i]} alt={`Option ${i}`} style={{ maxHeight: '60px', maxWidth: '100%', borderRadius: '4px', marginTop: '4px', alignSelf: 'flex-start' }} />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
